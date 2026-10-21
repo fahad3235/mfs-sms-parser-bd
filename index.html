@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MFS SMS Parser BD -- bKash / Nagad / Rocket / Upay SMS to ledger</title>
+<meta name="description" content="Paste Bangladeshi mobile-banking SMS and get a clean transaction ledger. 100% client-side, nothing uploaded.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1><span data-i18n="appTitle">MFS SMS Parser</span> <span class="em">BD</span></h1>
+      <p data-i18n="tagline">Turn bKash, Nagad, Rocket &amp; Upay transaction SMS into a clean ledger -- 100% in your browser.</p>
+    </div>
+    <div class="row">
+      <span class="privacy"><span class="dot"></span><span data-i18n="privacyBadge">100% offline -- your SMS never leave this browser</span></span>
+      <button class="btn ghost" id="langToggle">&#2476;&#2494;&#2434;&#2482;&#2494;</button>
+    </div>
+  </header>
+
+  <div id="sampleBanner" class="banner hidden" data-i18n="sampleBanner">Showing SAMPLE data -- your real SMS never leave this browser.</div>
+
+  <section class="card">
+    <h2 data-i18n="s1Title">1. Paste your SMS</h2>
+    <p class="hint" data-i18n="s1Hint">Paste one or many transaction SMS. Separate each SMS with a blank line.</p>
+    <label class="lbl" for="smsInput">SMS</label>
+    <textarea id="smsInput" data-i18n-ph="smsPh" placeholder="Paste SMS here, one message per block separated by a blank line..."></textarea>
+    <div class="row" style="margin-top:10px">
+      <label class="lbl" for="providerSel" data-i18n="providerLabel">Provider</label>
+      <select id="providerSel">
+        <option value="auto" data-i18n="providerAuto">Auto-detect</option>
+        <option value="bkash">bKash</option>
+        <option value="nagad">Nagad</option>
+        <option value="rocket">Rocket</option>
+        <option value="upay">Upay</option>
+      </select>
+      <button class="btn primary" id="parseBtn" data-i18n="parseBtn">Parse SMS</button>
+      <button class="btn" id="sampleBtn" data-i18n="sampleBtn">Load sample</button>
+      <button class="btn ghost" id="clearInputBtn" data-i18n="clearInputBtn">Clear</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="s2Title">2. Summary</h2>
+    <div class="stats">
+      <div class="stat"><div class="v" id="statParsed">0</div><div class="k" data-i18n="statParsed">Parsed txns</div></div>
+      <div class="stat"><div class="v good" id="statIn">0.00</div><div class="k" data-i18n="statIn">Money in (BDT)</div></div>
+      <div class="stat"><div class="v" id="statOut">0.00</div><div class="k" data-i18n="statOut">Money out (BDT)</div></div>
+      <div class="stat"><div class="v warnv" id="statDup">0</div><div class="k" data-i18n="statDup">Duplicate TrxIDs</div></div>
+      <div class="stat"><div class="v warnv" id="statReview">0</div><div class="k" data-i18n="statReview">Need review</div></div>
+    </div>
+    <h3 class="small muted" data-i18n="perProviderTitle">By provider</h3>
+    <div id="ppWrap"><p class="muted" data-i18n="emptyTable">No transactions parsed yet.</p></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="s3Title">3. Transactions</h2>
+    <div class="toolbar">
+      <input type="text" id="q" data-i18n-ph="searchPh" placeholder="Search TrxID, number or name...">
+      <select id="fProvider">
+        <option value="all" data-i18n="allProviders">All providers</option>
+        <option value="bkash">bKash</option>
+        <option value="nagad">Nagad</option>
+        <option value="rocket">Rocket</option>
+        <option value="upay">Upay</option>
+      </select>
+      <select id="fType">
+        <option value="all" data-i18n="allTypes">All types</option>
+        <option value="cash_in" data-i18n="t_cash_in">Cash In</option>
+        <option value="cash_out" data-i18n="t_cash_out">Cash Out</option>
+        <option value="send_money" data-i18n="t_send_money">Send Money</option>
+        <option value="payment" data-i18n="t_payment">Payment</option>
+        <option value="recharge" data-i18n="t_recharge">Recharge</option>
+        <option value="receive_money" data-i18n="t_receive_money">Receive Money</option>
+        <option value="other" data-i18n="t_other">Other</option>
+      </select>
+    </div>
+    <div class="tablewrap">
+      <table class="grid" id="txTable">
+        <thead><tr>
+          <th data-sort="date" data-i18n="colDate">Date</th>
+          <th data-i18n="colTime">Time</th>
+          <th data-sort="provider" data-i18n="colProvider">Provider</th>
+          <th data-sort="type" data-i18n="colType">Type</th>
+          <th data-sort="amount" data-i18n="colAmount">Amount</th>
+          <th data-i18n="colFee">Fee</th>
+          <th data-sort="counterparty" data-i18n="colCp">Counterparty</th>
+          <th data-i18n="colTrx">TrxID</th>
+          <th data-sort="balance" data-i18n="colBal">Balance</th>
+          <th data-i18n="colWarn">Flags</th>
+        </tr></thead>
+        <tbody id="txBody">
+          <tr><td colspan="10" class="empty" data-i18n="emptyTable">No transactions parsed yet. Paste SMS above and press Parse.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card hidden" id="reviewBox">
+    <h2><span data-i18n="reviewTitle">Needs review</span> (<span id="reviewCount">0</span>)</h2>
+    <p class="hint" data-i18n="reviewHint">These lines could not be parsed (no amount found or unknown format). Check them manually.</p>
+    <div id="reviewList"></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="s4Title">4. Name mapping (optional)</h2>
+    <p class="hint" data-i18n="s4Hint">One per line: 01XXXXXXXXX,Name -- numbers will show with names in the table.</p>
+    <textarea id="contacts" data-i18n-ph="contactsPh" placeholder="01800000001,Amma" style="min-height:80px"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="applyContacts" data-i18n="applyContacts">Apply names</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="s5Title">5. Export &amp; erase</h2>
+    <div class="row">
+      <button class="btn primary" id="exportCsv" data-i18n="exportCsv">Download CSV</button>
+      <button class="btn" id="copyTable" data-i18n="copyTable">Copy table</button>
+      <button class="btn danger" id="eraseBtn" data-i18n="eraseBtn">Erase all data</button>
+    </div>
+    <div class="erasebox hidden" id="eraseBox">
+      <p class="hint" data-i18n="eraseTitle">Type CLEAR to erase every parsed transaction, review item and name mapping.</p>
+      <div class="row">
+        <input type="text" id="eraseInput" autocomplete="off" placeholder="CLEAR">
+        <button class="btn danger" id="eraseConfirm" data-i18n="eraseBtn">Erase all data</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p data-i18n="footerNote">Personal tool. Not affiliated with bKash, Nagad, Rocket or Upay. The parser is heuristic -- always reconcile against your provider statement for final accounts.</p>
+    <p class="small">mfs-sms-parser-bd v1.0.0 -- MUSE Project Factory</p>
+  </footer>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script src="js/parser.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

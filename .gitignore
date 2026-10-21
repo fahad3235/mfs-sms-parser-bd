@@ -1,0 +1,7 @@
+# mfs-sms-parser-bd -- static site, nothing to build
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
